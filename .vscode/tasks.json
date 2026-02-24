@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-webforms",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$ErrorActionPreference='Stop';",
+        "$vsWhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\\Installer\\vswhere.exe';",
+        "if (-not (Test-Path $vsWhere)) { throw 'vswhere.exe not found. Install Visual Studio Build Tools 2022 or Visual Studio.' }",
+        "$msbuildPath = & $vsWhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\\**\\Bin\\MSBuild.exe' | Select-Object -First 1;",
+        "if (-not $msbuildPath) { throw 'MSBuild.exe not found. Install MSBuild workload.' }",
+        "& $msbuildPath '${workspaceFolder}\\RefDocTest.sln' /t:Build /p:Configuration=Debug /p:Platform='Any CPU' /m"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

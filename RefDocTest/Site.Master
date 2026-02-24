@@ -1,0 +1,32 @@
+<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Site.Master.cs" Inherits="RefDocTest.SiteMaster" %>
+<!DOCTYPE html>
+<html>
+<head runat="server">
+    <meta charset="utf-8" />
+    <title>RefDocTest</title>
+    <style>
+        body { font-family: Segoe UI, Arial, sans-serif; margin: 20px; }
+        .top-nav { margin-bottom: 20px; }
+        .top-nav a { margin-right: 12px; }
+        .muted { color: #555; }
+        .card { border: 1px solid #ddd; border-radius: 6px; padding: 16px; max-width: 900px; }
+        .row { margin-top: 10px; }
+        textarea { width: 100%; min-height: 220px; font-family: Consolas, monospace; }
+        input[type=text] { width: 100%; max-width: 760px; }
+        .error { color: #b00020; }
+    </style>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div class="top-nav">
+            <asp:HyperLink ID="lnkHome" runat="server" NavigateUrl="~/Default.aspx" Text="Home" />
+            <asp:HyperLink ID="lnkLogin" runat="server" NavigateUrl="~/Login.aspx" Text="Login" />
+            <asp:HyperLink ID="lnkLogout" runat="server" NavigateUrl="~/Logout.aspx" Text="Logout" />
+            <span class="muted">
+                <asp:Label ID="lblUser" runat="server" />
+            </span>
+        </div>
+        <asp:ContentPlaceHolder ID="MainContent" runat="server" />
+    </form>
+</body>
+</html>

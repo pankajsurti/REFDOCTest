@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch RefDocTest (IIS Express)",
+      "type": "clr",
+      "request": "launch",
+      "preLaunchTask": "build-webforms",
+      "program": "${env:ProgramFiles}\\IIS Express\\iisexpress.exe",
+      "args": [
+        "/path:${workspaceFolder}\\RefDocTest",
+        "/port:5050",
+        "/clr:v4.0",
+        "/systray:false"
+      ],
+      "cwd": "${workspaceFolder}\\RefDocTest",
+      "stopAtEntry": false,
+      "console": "internalConsole"
+    }
+  ]
+}
