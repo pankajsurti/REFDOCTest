@@ -4,6 +4,7 @@ using System.Configuration;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -17,9 +18,18 @@ namespace REFDOCTest
         private static string ClientId => ConfigurationManager.AppSettings["ida:ClientId"];
         private static string TenantId => ConfigurationManager.AppSettings["ida:TenantId"];
         private static string ClientSecret => ConfigurationManager.AppSettings["ida:ClientSecret"];
+        private static string RedirectUri => ConfigurationManager.AppSettings["ida:RedirectUri"];
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            // Handle OAuth callback with authorization code
+            string code = Request.QueryString["code"];
+            if (!string.IsNullOrEmpty(code) && !IsPostBack)
+            {
+                // Store the authorization code in session for later use
+                Session["AuthCode"] = code;
+            }
+
             // Check if user is authenticated
             if (!Request.IsAuthenticated)
             {
@@ -60,7 +70,7 @@ namespace REFDOCTest
                         return;
                     }
 
-                    // Get access token using client credentials flow
+                    // Get access token using authorization code flow
                     var (success, accessToken, errorMessage) = await GetAccessTokenAsync(scope);
 
                     if (success && !string.IsNullOrEmpty(accessToken))
@@ -89,6 +99,34 @@ namespace REFDOCTest
         {
             try
             {
+                // Get authorization code from session
+                string authCode = Session["AuthCode"] as string;
+
+                // If no auth code, initiate authorization request
+                if (string.IsNullOrEmpty(authCode))
+                {
+                    // Generate state parameter for CSRF protection
+                    string state = Guid.NewGuid().ToString();
+                    Session["OAuthState"] = state;
+                    Session["RequestedScope"] = scope;
+
+                    // Build authorization URL
+                    var authUrl = $"https://login.microsoftonline.com/{TenantId}/oauth2/v2.0/authorize?" +
+                        $"client_id={Uri.EscapeDataString(ClientId)}" +
+                        $"&response_type=code" +
+                        $"&redirect_uri={Uri.EscapeDataString(RedirectUri + "Default.aspx")}" +
+                        $"&response_mode=query" +
+                        $"&scope={Uri.EscapeDataString(scope)}" +
+                        $"&state={Uri.EscapeDataString(state)}" +
+                        $"&prompt=consent";
+
+                    // Redirect to authorization endpoint
+                    HttpContext.Current.Response.Redirect(authUrl, false);
+                    HttpContext.Current.ApplicationInstance.CompleteRequest();
+                    
+                    return (false, null, "Redirecting to authorization endpoint...");
+                }
+
                 using (var httpClient = new HttpClient())
                 {
                     var tokenEndpoint = $"https://login.microsoftonline.com/{TenantId}/oauth2/v2.0/token";
@@ -97,8 +135,9 @@ namespace REFDOCTest
                     {
                         { "client_id", ClientId },
                         { "client_secret", ClientSecret },
-                        { "scope", scope },
-                        { "grant_type", "client_credentials" }
+                        { "code", authCode },
+                        { "redirect_uri", RedirectUri + "Default.aspx" },
+                        { "grant_type", "authorization_code" }
                     };
 
                     var content = new FormUrlEncodedContent(requestData);
@@ -109,11 +148,21 @@ namespace REFDOCTest
                     {
                         var json = JObject.Parse(responseContent);
                         var accessToken = json["access_token"]?.ToString();
+                        var refreshToken = json["refresh_token"]?.ToString();
                         
                         if (string.IsNullOrEmpty(accessToken))
                         {
                             return (false, null, "Access token not found in response.");
                         }
+
+                        // Store refresh token for future use
+                        if (!string.IsNullOrEmpty(refreshToken))
+                        {
+                            Session["RefreshToken"] = refreshToken;
+                        }
+
+                        // Clear the used authorization code
+                        Session["AuthCode"] = null;
 
                         return (true, accessToken, null);
                     }
@@ -132,6 +181,9 @@ namespace REFDOCTest
                         {
                             // Use raw response if not JSON
                         }
+
+                        // Clear the failed authorization code
+                        Session["AuthCode"] = null;
 
                         return (false, null, $"Token request failed ({response.StatusCode}):<br/><br/>{errorDetails}");
                     }
